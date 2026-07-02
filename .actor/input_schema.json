@@ -1,0 +1,36 @@
+{
+    "title": "UK Trades Directory Scraper Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "keyword": {
+            "title": "Keyword",
+            "type": "string",
+            "description": "The specific trade (e.g., 'plumber', 'builder', 'electrician').",
+            "editor": "textfield",
+            "prefill": "plumber"
+        },
+        "location": {
+            "title": "Location (City or Postcode)",
+            "type": "string",
+            "description": "The UK location (e.g., 'London', 'Manchester').",
+            "editor": "textfield",
+            "prefill": "London"
+        },
+        "maxLeads": {
+            "title": "Maximum Leads",
+            "type": "integer",
+            "description": "Maximum number of UK tradie leads to extract.",
+            "default": 100,
+            "minimum": 1
+        },
+        "proxyConfiguration": {
+            "title": "Proxy Configuration",
+            "type": "object",
+            "description": "Proxy settings. Apify Residential Proxy (UK targeted) is highly recommended.",
+            "prefill": { "useApifyProxy": true },
+            "editor": "proxy"
+        }
+    },
+    "required": ["keyword", "location"]
+}
