@@ -1,14 +1,14 @@
 # UK Trades Directory Scraper
 
-**Extract verified tradesmen, builders, plumbers, and electricians across the UK.**
+**Extract verified UK businesses, tradesmen, and local services from Scoot.co.uk.**
 
-The UK Trades Directory Scraper extracts high-quality B2B leads from top UK directories like Yell.com, providing you with tradesmen details, contact information, and review ratings.
+The UK Trades Directory Scraper is your gateway to extracting premium B2B data from the United Kingdom. Source highly valuable business leads effortlessly.
 
 ## What can UK Trades Directory Scraper do?
 
-- ✅ **Extract Premium Leads** - Get trading names, addresses, and phone numbers.
-- ✅ **Identify Trades** - Know exactly what type of trade the business specializes in.
-- ✅ **Assess Quality** - Scrape ratings and review counts to target trusted tradesmen.
+- ✅ **Extract UK B2B Leads** - Get business names, physical addresses, and direct contact numbers.
+- ✅ **Target specific Industries** - Focus your search on plumbers, tradesmen, accountants, or local services.
+- ✅ **Identify Local Footprint** - Target major economic hubs like London, Manchester, Birmingham, or Glasgow.
 - ✅ **Export formats** - Download data in JSON, CSV, Excel, or HTML formats.
 - ✅ **Integrations** - Connect seamlessly with API, webhooks, Make, or Zapier.
 - ✅ **No coding required** - Use our simple interface to start scraping immediately.
@@ -31,7 +31,7 @@ UK trades directories contain valuable data for:
 | **phone** | Direct contact number | "020 1234 5678" |
 | **rating** | User rating and review count | "4.8 (120 Reviews)" |
 | **website** | Business website | "https://www.example.com" |
-| **listingUrl** | Link to the directory listing | "https://www.yell.com/..." |
+| **listingUrl** | Link to the directory listing | "https://www.scoot.co.uk/..." |
 
 ## How to scrape UK Trades data
 
@@ -66,7 +66,7 @@ You can download data in multiple formats:
     "phone": "02012345678",
     "website": "https://www.example.com",
     "rating": "4.8 120 Reviews",
-    "listingUrl": "https://www.yell.com/...",
+    "listingUrl": "https://www.scoot.co.uk/...",
     "scrapedAt": "2026-07-02T15:00:00Z"
 }
 ```

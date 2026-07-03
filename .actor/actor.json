@@ -1,8 +1,8 @@
 {
     "actorSpecification": 1,
     "name": "uk-trades-directory-scraper",
-    "title": "UK Trades Directory Scraper",
-    "description": "Extract verified tradesmen, builders, plumbers, and electricians across the UK. High-quality B2B leads from top UK directories.",
+    "title": "UK Trades Directory Scraper | B2B Leads",
+    "description": "Extract verified UK businesses and tradesmen from Scoot.co.uk. Premium B2B leads.",
     "version": "1.0",
     "input": "./input_schema.json",
     "dockerfile": "./Dockerfile",
@@ -22,8 +22,8 @@
         }
     ],
     "isPublic": true,
-    "seoTitle": "UK Trades Directory Scraper | Yell Extractor",
-    "seoDescription": "Scrape top-rated builders, plumbers, and electricians in the UK from Yell and local directories. Extract phone numbers, ratings, and websites for B2B outreach.",
+    "seoTitle": "Scoot.co.uk Scraper | UK Business Directory Extractor",
+    "seoDescription": "Scrape verified UK businesses, tradesmen, and B2B leads from Scoot.co.uk.",
     "categories": [
         "LEAD_GENERATION",
         "BUSINESS",

@@ -15,13 +15,15 @@ try {
     const proxyConfig = await Actor.createProxyConfiguration(proxyConfiguration || { 
         useApifyProxy: true,
         apifyProxyGroups: ['RESIDENTIAL'],
-        apifyProxyCountry: 'GB' // Force UK proxies for better success rate on Yell
+        apifyProxyCountry: 'GB'
     });
 
-    log.info(`Searching Yell UK for "${keyword}" in "${location}"`);
+    log.info(`Searching scoot.co.uk for "${keyword}" in "${location}"`);
+    
     await Actor.charge({ eventName: 'apify-actor-start', count: 1 });
 
     let extractedCount = 0;
+    let isSearchSubmitted = false;
 
     const crawler = new PlaywrightCrawler({
         proxyConfiguration: proxyConfig,
@@ -31,60 +33,79 @@ try {
             useFingerprints: true,
         },
         async requestHandler({ page, request, log, enqueueLinks }) {
-            log.info(`Parsing directory page: ${request.url}`);
+            log.info(`Parsing page: ${request.url}`);
             
-            await page.waitForSelector('.businessCapsule, .listing, article', { timeout: 30000 }).catch(() => log.warning('Timeout waiting for DOM'));
-
             const title = await page.title();
-            if (title.includes('Attention Required') || title.includes('Just a moment')) {
-                throw new Error('Blocked by Cloudflare. Retrying with residential proxy...');
+            if (title.includes('Just a moment') || title.includes('Access Denied') || title.includes('Attention Required')) {
+                throw new Error('Blocked by WAF. Retrying with residential proxy...');
             }
 
-            // Extract from standard HTML tags used in Yell
-            const businessItems = await page.$$('.businessCapsule, .local-results-item, article');
+            if (request.url === 'https://www.scoot.co.uk/' && !isSearchSubmitted) {
+                log.info('Filling out the search form on scoot.co.uk homepage...');
+                await page.waitForSelector('input[name="what"]', { timeout: 30000 });
+                await page.fill('input[name="what"]', keyword);
+                await page.fill('input[name="where"]', location);
+                
+                await Promise.all([
+                    page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 60000 }),
+                    page.click('button[type="submit"], input[type="submit"], #search_button, .search-btn')
+                ]).catch(() => log.warning('Navigation wait timed out, continuing...'));
+                
+                log.info(`Redirected to search results: ${page.url()}`);
+                isSearchSubmitted = true;
+            }
+
+            // Results page parsing
+            await page.waitForSelector('.business-listing, .listing, .result, .search-result, .card, .vcard, .business-card', { timeout: 30000 }).catch(() => log.warning('Timeout waiting for DOM.'));
             
-            for (const item of businessItems) {
+            await page.evaluate(() => window.scrollBy(0, window.innerHeight * 2));
+            await page.waitForTimeout(2000);
+
+            const items = await page.$$('.business-listing, .listing, .result, .search-result, .card, .vcard, .business-card');
+            
+            for (const item of items) {
                 if (extractedCount >= maxLeads) break;
 
-                const nameElement = await item.$('h2, .businessCapsule--name, [itemprop="name"]');
+                const nameElement = await item.$('h2, .title, .business-name, .fn, .name');
                 if (!nameElement) continue;
                 const businessName = (await nameElement.innerText()).trim();
 
-                const categoryElement = await item.$('.businessCapsule--classification, [itemprop="description"]');
-                const category = categoryElement ? (await categoryElement.innerText()).trim() : keyword;
-
-                const addressElement = await item.$('[itemprop="address"], .businessCapsule--address');
+                const addressElement = await item.$('.address, .location, .adr, [itemprop="address"]');
                 const address = addressElement ? (await addressElement.innerText()).trim().replace(/\s+/g, ' ') : '';
 
-                // Ratings (e.g. "4.8")
-                const ratingElement = await item.$('.starRating--average, [itemprop="ratingValue"]');
-                const rating = ratingElement ? (await ratingElement.innerText()).trim() : '';
-                
-                // Reviews count
-                const reviewElement = await item.$('.starRating--total, [itemprop="reviewCount"]');
-                const reviews = reviewElement ? (await reviewElement.innerText()).trim() : '';
+                // Category
+                const catElement = await item.$('.category, .industry, .type, [itemprop="applicationCategory"]');
+                const industry = catElement ? (await catElement.innerText()).trim() : keyword;
 
                 // Phones
-                const phoneElement = await item.$('.business--telephoneNumber, [itemprop="telephone"], a[href^="tel:"]');
-                let phone = phoneElement ? (await phoneElement.innerText()).trim() : '';
+                const phoneElement = await item.$('a[href^="tel:"], .phone, .tel, .contact-number, [itemprop="telephone"]');
+                let phone = '';
+                if (phoneElement) {
+                    const href = await phoneElement.getAttribute('href');
+                    if (href && href.startsWith('tel:')) {
+                        phone = href.replace('tel:', '').trim();
+                    } else {
+                        phone = (await phoneElement.innerText()).trim();
+                    }
+                }
                 
                 // Website
-                const websiteElement = await item.$('a.businessCapsule--ctaItem[href^="http"]:not([href*="yell.com"]), a[itemprop="url"]');
+                const websiteElement = await item.$('.website a, a.website-link, .url');
                 const website = websiteElement ? await websiteElement.getAttribute('href') : '';
                 
-                const urlElement = await item.$('a.businessCapsule--title, h2 a');
+                // URL
+                const urlElement = await item.$('h2 a, .business-name a, a.title, .fn a');
                 const listingUrl = urlElement ? await urlElement.getAttribute('href') : '';
-                const fullListingUrl = listingUrl && !listingUrl.startsWith('http') ? new URL(listingUrl, 'https://www.yell.com').toString() : listingUrl;
+                const fullListingUrl = listingUrl && !listingUrl.startsWith('http') ? new URL(listingUrl, 'https://www.scoot.co.uk').toString() : listingUrl;
 
-                if (businessName && businessName.length > 2) {
+                if (businessName && businessName.length > 1) {
                     const record = {
                         businessName,
-                        category,
+                        industry,
                         address,
                         phone,
                         website,
-                        rating: `${rating} ${reviews}`.trim(),
-                        listingUrl: fullListingUrl,
+                        listingUrl: fullListingUrl || page.url(),
                         scrapedAt: new Date().toISOString()
                     };
 
@@ -97,11 +118,11 @@ try {
 
             // Pagination
             if (extractedCount < maxLeads) {
-                const hasNextPage = await page.$('a.pagination--next, a[rel="next"]');
+                const hasNextPage = await page.$('.pagination a.next, a[rel="next"], .next-page, a:has-text("Next")');
                 if (hasNextPage) {
                     const nextUrl = await hasNextPage.getAttribute('href');
                     if (nextUrl) {
-                        const absoluteUrl = new URL(nextUrl, 'https://www.yell.com').toString();
+                        const absoluteUrl = new URL(nextUrl, 'https://www.scoot.co.uk').toString();
                         log.info(`Enqueuing next page: ${absoluteUrl}`);
                         await enqueueLinks({
                             urls: [absoluteUrl],
@@ -115,15 +136,13 @@ try {
         }
     });
 
-    const startUrl = `https://www.yell.com/ucs/UcsSearchAction.do?keywords=${encodeURIComponent(keyword)}&location=${encodeURIComponent(location)}`;
-    
     await crawler.addRequests([{
-        url: startUrl
+        url: 'https://www.scoot.co.uk/'
     }]);
 
     await crawler.run();
 
-    log.info(`🎉 Done! Extracted ${extractedCount} UK tradie leads.`);
+    log.info(`🎉 Done! Extracted ${extractedCount} UK Business leads.`);
 
 } catch (error) {
     console.error('CRASH:', error);
