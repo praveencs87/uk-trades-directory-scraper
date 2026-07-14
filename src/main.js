@@ -7,8 +7,7 @@ await Actor.init();
 try {
     const input = await Actor.getInput();
     const { 
-        keyword = 'plumber', 
-        location = 'London', 
+        startUrls = [],
         maxLeads = 100,
         proxyConfiguration 
     } = input || {};
@@ -19,12 +18,11 @@ try {
         apifyProxyCountry: 'GB'
     });
 
-    log.info(`Searching scoot.co.uk for "${keyword}" in "${location}"`);
+    log.info(`Searching scoot.co.uk...`);
     
     await Actor.charge({ eventName: 'apify-actor-start', count: 1 });
 
     let extractedCount = 0;
-    let isSearchSubmitted = false;
 
     const crawler = new PlaywrightCrawler({
         proxyConfiguration: proxyConfig,
@@ -41,21 +39,7 @@ try {
                 throw new Error('Blocked by WAF. Retrying with residential proxy...');
             }
 
-            if (request.url === 'https://www.scoot.co.uk/' && !isSearchSubmitted) {
-                log.info('Filling out the search form on scoot.co.uk homepage...');
-                await page.waitForSelector('input[name="what"]', { timeout: 30000 });
-                await page.fill('input[name="what"]', keyword);
-                await page.fill('input[name="where"]', location);
-                
-                await Promise.all([
-                    page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 60000 }),
-                    page.click('button[type="submit"], input[type="submit"], #search_button, .search-btn')
-                ]).catch(() => log.warning('Navigation wait timed out, continuing...'));
-                
-                log.info(`Redirected to search results: ${page.url()}`);
-                isSearchSubmitted = true;
-            }
-
+            // Removed isSearchSubmitted logic
             // Results page parsing
             await page.waitForSelector('.business-listing, .listing, .result, .search-result, .card, .vcard, .business-card', { timeout: 30000 }).catch(() => log.warning('Timeout waiting for DOM.'));
             
@@ -76,7 +60,7 @@ try {
 
                 // Category
                 const catElement = await item.$('.category, .industry, .type, [itemprop="applicationCategory"]');
-                const industry = catElement ? (await catElement.innerText()).trim() : keyword;
+                const industry = catElement ? (await catElement.innerText()).trim() : '';
 
                 // Phones
                 const phoneElement = await item.$('a[href^="tel:"], .phone, .tel, .contact-number, [itemprop="telephone"]');
@@ -137,9 +121,14 @@ try {
         }
     });
 
-    await crawler.addRequests([{
-        url: 'https://www.scoot.co.uk/'
-    }]);
+    if (startUrls && startUrls.length > 0) {
+        for (const req of startUrls) {
+            await crawler.addRequests([{ url: typeof req === 'string' ? req : req.url }]);
+        }
+    } else {
+        log.warning('No startUrls provided. Using default.');
+        await crawler.addRequests([{ url: 'https://www.checkatrade.com/Search?page=1&categoryId=1010&location=London' }]);
+    }
 
     armKillSwitch(crawler);
     await crawler.run();

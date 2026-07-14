@@ -3,19 +3,14 @@
     "type": "object",
     "schemaVersion": 1,
     "properties": {
-        "keyword": {
-            "title": "Keyword",
-            "type": "string",
-            "description": "The specific trade (e.g., 'plumber', 'builder', 'electrician').",
-            "editor": "textfield",
-            "prefill": "plumber"
-        },
-        "location": {
-            "title": "Location (City or Postcode)",
-            "type": "string",
-            "description": "The UK location (e.g., 'London', 'Manchester').",
-            "editor": "textfield",
-            "prefill": "London"
+        "startUrls": {
+            "title": "Start URLs",
+            "type": "array",
+            "description": "List of search URLs to scrape.",
+            "editor": "requestListSources",
+            "prefill": [
+                { "url": "https://www.checkatrade.com/Search?page=1&categoryId=1010&location=London" }
+            ]
         },
         "maxLeads": {
             "title": "Maximum Leads",
@@ -32,5 +27,5 @@
             "editor": "proxy"
         }
     },
-    "required": ["keyword", "location"]
+    "required": ["startUrls"]
 }
